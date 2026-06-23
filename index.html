@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSPO II Tracker — 23 ngày</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b1220; --panel:#111c2e; --panel2:#0e1726; --line:#22324a;
+    --ink:#e8eef7; --muted:#8aa0bd; --faint:#5c708d;
+    --gold:#f5b544; --gold-soft:rgba(245,181,68,.14);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.14);
+    --skip:#7c8aa3; --skip-soft:rgba(124,138,163,.16);
+    --danger:#ff7a6b;
+    --radius:16px; --shadow:0 8px 30px rgba(0,0,0,.35);
+  }
+  [data-mode="light"]{
+    --bg:#f6f4ee; --panel:#ffffff; --panel2:#fbfaf6; --line:#e7e2d6;
+    --ink:#1c2533; --muted:#5d6b80; --faint:#94a0b2;
+    --gold:#c8881a; --gold-soft:rgba(200,136,26,.12);
+    --teal:#0f9e8e; --teal-soft:rgba(15,158,142,.12);
+    --skip:#8a96a8; --skip-soft:rgba(138,150,168,.14);
+    --danger:#d6492f;
+    --shadow:0 8px 24px rgba(40,40,40,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif; line-height:1.5;
+    padding:18px 14px 80px; max-width:680px; margin:0 auto;
+    transition:background .25s,color .25s;
+  }
+  h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+  .brand{font-weight:700;font-size:1.05rem;letter-spacing:-.02em}
+  .brand .tag{color:var(--gold)}
+  .modebtn{background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    border-radius:999px;padding:6px 12px;font-size:.78rem;cursor:pointer;font-family:inherit}
+  .modebtn:hover{color:var(--ink)}
+  .sub{color:var(--faint);font-size:.8rem;margin-bottom:18px}
+
+  /* HERO: ring + stats */
+  .hero{display:flex;gap:18px;align-items:center;background:var(--panel);
+    border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .ringwrap{position:relative;flex:0 0 auto}
+  .ring{transform:rotate(-90deg)}
+  .ring-bg{stroke:var(--line)}
+  .ring-fg{stroke:var(--gold);stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+  .ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring-pct{font-family:'Space Grotesk';font-weight:700;font-size:1.5rem;line-height:1}
+  .ring-cap{font-size:.62rem;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+  .herostats{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .stat .n{font-family:'Space Grotesk';font-weight:700;font-size:1.25rem;line-height:1}
+  .stat .l{font-size:.66rem;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+  .stat.streak .n{color:var(--gold)}
+  .stat.left .n{color:var(--teal)}
+
+  .controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .btn{flex:1;min-width:140px;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    border-radius:12px;padding:11px;font-family:inherit;font-weight:600;font-size:.85rem;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--gold);color:var(--gold)}
+  .btn.primary{background:var(--gold);color:#1a1205;border-color:var(--gold)}
+  .btn.primary:hover{filter:brightness(1.05);color:#1a1205}
+  .btn.ghost{flex:0 0 auto;min-width:auto;padding:11px 14px}
+
+  /* phase bars */
+  .phases{display:grid;gap:8px;margin-bottom:18px}
+  .pbar{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .pbar .row{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;margin-bottom:6px}
+  .pbar .pname{font-weight:600}
+  .pbar .pcount{color:var(--faint);font-variant-numeric:tabular-nums}
+  .track{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+  .fill{height:100%;border-radius:99px;transition:width .4s ease}
+
+  .secttitle{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);
+    margin:22px 4px 10px;display:flex;align-items:center;gap:8px}
+  .secttitle::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* day card */
+  .day{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;margin-bottom:12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .day.collapsed{padding:12px 16px;box-shadow:none;opacity:.78}
+  .day.today{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),var(--shadow)}
+  .day.done{opacity:.62}
+  .day.skipped{opacity:.6}
+  .day .accent{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .dhead{display:flex;align-items:flex-start;gap:12px;cursor:pointer}
+  .dnum{font-family:'Space Grotesk';font-weight:700;font-size:1.1rem;flex:0 0 auto;
+    width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+    background:var(--panel2);border:1px solid var(--line)}
+  .day.today .dnum{background:var(--gold-soft);border-color:var(--gold);color:var(--gold)}
+  .day.done .dnum{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
+  .dmeta{flex:1;min-width:0}
+  .pill{display:inline-block;font-size:.62rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    padding:2px 8px;border-radius:99px;margin-bottom:4px}
+  .dtitle{font-family:'Space Grotesk';font-weight:600;font-size:1.02rem;letter-spacing:-.01em}
+  .ddate{font-size:.72rem;color:var(--faint);margin-top:2px}
+  .badge{flex:0 0 auto;font-size:.66rem;font-weight:700;padding:4px 9px;border-radius:99px;align-self:center}
+  .badge.todaytag{background:var(--gold);color:#1a1205}
+  .badge.donetag{background:var(--teal-soft);color:var(--teal)}
+  .badge.skiptag{background:var(--skip-soft);color:var(--skip)}
+
+  .dbody{margin-top:14px;display:none}
+  .day.open .dbody,.day.today .dbody{display:block}
+  .block{margin-top:12px}
+  .block .lab{font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:5px;display:flex;align-items:center;gap:6px}
+  .block .lab .ic{font-size:.85rem}
+  .block p{font-size:.88rem;color:var(--ink)}
+  .block ul{list-style:none;display:grid;gap:5px}
+  .block li{font-size:.86rem;padding-left:16px;position:relative;color:var(--ink)}
+  .block li::before{content:"›";position:absolute;left:0;color:var(--gold);font-weight:700}
+  .measure{background:var(--teal-soft);border:1px solid var(--teal);border-radius:10px;padding:9px 11px;margin-top:12px}
+  .measure .lab{color:var(--teal)}
+  .measure p{font-size:.85rem;font-weight:500}
+  .links{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .links a{font-size:.74rem;text-decoration:none;color:var(--muted);background:var(--panel2);
+    border:1px solid var(--line);padding:5px 10px;border-radius:8px;transition:.15s}
+  .links a:hover{color:var(--gold);border-color:var(--gold)}
+
+  .dactions{display:flex;gap:8px;margin-top:16px}
+  .act{flex:1;border:none;border-radius:11px;padding:11px;font-family:inherit;font-weight:600;font-size:.85rem;cursor:pointer;transition:.15s}
+  .act.done-btn{background:var(--teal);color:#04201c}
+  .act.done-btn:hover{filter:brightness(1.06)}
+  .act.skip-btn{background:var(--skip-soft);color:var(--skip);border:1px solid var(--line)}
+  .act.skip-btn:hover{color:var(--ink)}
+  .act.undo-btn{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+
+  .gate{background:linear-gradient(180deg,var(--gold-soft),transparent);border:1px dashed var(--gold);
+    border-radius:14px;padding:13px 15px;margin:14px 0;display:flex;gap:11px;align-items:flex-start}
+  .gate .em{font-size:1.3rem;flex:0 0 auto}
+  .gate .gt{font-family:'Space Grotesk';font-weight:600;font-size:.92rem;color:var(--gold)}
+  .gate .gs{font-size:.8rem;color:var(--muted);margin-top:2px}
+
+  .warn{background:rgba(255,122,107,.1);border:1px solid var(--danger);border-radius:10px;
+    padding:9px 11px;margin-top:12px;font-size:.8rem;color:var(--danger);font-weight:500}
+
+  /* error log */
+  .logbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:18px;box-shadow:var(--shadow)}
+  .logbox h3{font-size:.95rem;margin-bottom:4px}
+  .logbox .hint{font-size:.76rem;color:var(--faint);margin-bottom:10px}
+  .logbox textarea{width:100%;min-height:120px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;color:var(--ink);font-family:'Inter',sans-serif;font-size:.85rem;padding:11px;resize:vertical}
+  .logbox textarea:focus{outline:none;border-color:var(--gold)}
+  .saved{font-size:.7rem;color:var(--teal);margin-top:6px;height:14px;transition:opacity .3s}
+
+  footer{text-align:center;color:var(--faint);font-size:.72rem;margin-top:26px}
+  .reset{background:none;border:none;color:var(--faint);text-decoration:underline;cursor:pointer;font-size:.72rem;font-family:inherit}
+  @media(max-width:520px){
+    .hero{flex-direction:column;align-items:stretch;text-align:center}
+    .herostats{grid-template-columns:1fr 1fr}
+    .ringwrap{align-self:center}
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">PSPO II <span class="tag">/ Sprint 23 ngày</span></div>
+    <button class="modebtn" id="modeBtn">☾ Light</button>
+  </div>
+  <div class="sub">Mỗi ngày ~1h. Học → làm → đo bằng output. Bỏ qua thì <b>skip, không reset</b>. Thi: 40 câu / 60 phút / pass 85% / $250.</div>
+
+  <div class="hero">
+    <div class="ringwrap">
+      <svg class="ring" width="92" height="92" viewBox="0 0 92 92">
+        <circle class="ring-bg" cx="46" cy="46" r="40" fill="none" stroke-width="8"/>
+        <circle class="ring-fg" id="ringFg" cx="46" cy="46" r="40" fill="none" stroke-width="8" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+      </svg>
+      <div class="ring-label">
+        <div class="ring-pct" id="ringPct">0%</div>
+        <div class="ring-cap">hoàn thành</div>
+      </div>
+    </div>
+    <div class="herostats">
+      <div class="stat"><div class="n" id="sDone">0</div><div class="l">ngày xong</div></div>
+      <div class="stat streak"><div class="n" id="sStreak">0</div><div class="l">chuỗi 🔥</div></div>
+      <div class="stat left"><div class="n" id="sLeft">23</div><div class="l">ngày còn lại</div></div>
+      <div class="stat"><div class="n" id="sSkip">0</div><div class="l">đã skip</div></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn primary" id="jumpToday">→ Hôm nay làm gì</button>
+    <button class="btn" id="focusToggle">👁 Focus mode: BẬT</button>
+  </div>
+
+  <div class="phases" id="phases"></div>
+
+  <div id="timeline"></div>
+
+  <div class="logbox">
+    <h3>📓 Sổ lỗi sai (error log)</h3>
+    <div class="hint">Mỗi câu sai → ghi 1 dòng: <b>chủ đề + tại sao sai + đúng là gì</b>. Đây là thứ ăn điểm PSPO II nhất. Tự lưu.</div>
+    <textarea id="errlog" placeholder="VD: Sprint Goal — tao tưởng PO đặt 1 mình, thực ra cả Scrum Team thống nhất khi Planning.
+VD: 'Must/Always/Assign' gần như luôn là đáp án bẫy."></textarea>
+    <div class="saved" id="savedNote"></div>
+  </div>
+
+  <footer>
+    Tự lưu trong trình duyệt này (localStorage). Đổi máy/xoá cache là mất.<br>
+    <button class="reset" id="resetBtn">Reset toàn bộ tiến độ</button>
+  </footer>
+
+<script>
+const START = new Date(2026,5,23); // 23 June 2026
+const PHASES = {
+  P1:{name:"Nền tảng Scrum",  color:"#f5b544"},
+  P2:{name:"EBM — vũ khí",    color:"#2dd4bf"},
+  P3:{name:"Mock PSPO II",    color:"#9b8cff"},
+  P4:{name:"Quét cuối + Thi", color:"#ff9a6b"},
+};
+const L = {
+  guide:["Scrum Guide 2020","https://scrumguides.org/scrum-guide.html"],
+  opens:["Open Assessments","https://www.scrum.org/open-assessments"],
+  scrumopen:["Scrum Open","https://www.scrum.org/open-assessments/scrum-open"],
+  poopen:["PO Open","https://www.scrum.org/open-assessments/product-owner-open"],
+  ebmopen:["EBM Open","https://www.scrum.org/open-assessments/evidence-based-management-open"],
+  ebmguide:["EBM Guide","https://www.scrum.org/resources/evidence-based-management-guide"],
+  lapshin:["Lapshin PO Quiz","https://mlapshin.com/index.php/scrum-quizzes/product-owner-i/"],
+  tsmuk:["TheScrumMaster PSPO II","https://www.thescrummaster.co.uk/assessments/professional-scrum-product-owner-ii-pspo-ii-practice-assessment/"],
+  techagilist:["Techagilist PSPO II","https://www.techagilist.com/practice-exams/pspo-ii-practice-test/"],
+  register:["Đăng ký thi $250","https://www.scrum.org/assessments/professional-scrum-product-owner-ii-certification"],
+};
+const DAYS = [
+ {id:1,p:"P1",title:"Ôn lõi Scrum Guide",
+  study:"Đọc lại có chủ đích (mày đã đọc 1 lượt): Scrum Definition, Empiricism (3 trụ: Transparency · Inspection · Adaptation), 5 Scrum Values, và 3 accountabilities.",
+  todo:["Đọc lại 5 trang đầu Scrum Guide","Highlight 3 trụ empiricism + 5 values"],
+  measure:"Viết tay từ trí nhớ: đủ 3 trụ + 5 values + 3 accountabilities (PO / SM / Developers). Không nhìn lại.",
+  links:["guide"]},
+ {id:2,p:"P1",title:"Ranh giới 3 accountabilities + Glossary",
+  study:"Ai quyết cái gì: PO sở hữu Product Backlog & value, SM phục vụ/điều phối (không giao việc), Developers tự quản cách làm. Đọc Scrum Glossary để khỏi dính bẫy từ.",
+  todo:["Đọc phần Scrum Team + Glossary","Làm Scrum Open lần 1 — chụp màn hình câu sai"],
+  measure:"Scrum Open lần 1 đã làm xong, error log có ≥5 dòng câu sai. (Điểm thấp lúc này là bình thường.)",
+  links:["scrumopen","guide"]},
+ {id:3,p:"P1",title:"5 sự kiện (Events)",
+  study:"Sprint, Sprint Planning, Daily Scrum, Sprint Review, Sprint Retrospective — mục đích + timebox + ai tham gia. Nhớ: Sprint là container chứa mọi event.",
+  todo:["Đọc phần Scrum Events","Làm lại Scrum Open"],
+  measure:"Scrum Open ≥ 85%.",
+  links:["scrumopen","guide"]},
+ {id:4,p:"P1",title:"3 tạo tác + 3 cam kết",
+  study:"Product Backlog→Product Goal, Sprint Backlog→Sprint Goal, Increment→Definition of Done. Mỗi artifact gắn 1 commitment để tạo transparency.",
+  todo:["Đọc Scrum Artifacts + Commitments","Làm PO Open lần 1 — chụp câu sai"],
+  measure:"PO Open lần 1 xong, error log thêm ≥5 dòng.",
+  links:["poopen","guide"]},
+ {id:5,p:"P1",title:"Đọc lượt 2 + bẫy từ vựng",
+  study:"Đọc lại toàn bộ Scrum Guide lần 2, nhanh. Ghi 15–20 từ bẫy: must/always/assign/ensure (thường SAI) vs could/should/suggest/self-managing (thường ĐÚNG).",
+  todo:["Đọc Scrum Guide lần 2","Lập bảng 15–20 từ bẫy"],
+  measure:"PO Open ≥ 85% + bảng từ bẫy ≥15 từ.",
+  links:["poopen","guide"]},
+ {id:6,p:"P1",title:"Phản xạ đề — Lapshin",
+  study:"Lapshin Product Owner quiz, PRACTICE MODE. Làm 40 câu, đọc KỸ giải thích từng câu — đây là lúc hiểu 'mental model' ra đề.",
+  todo:["Lapshin PRACTICE MODE — 40 câu","Đọc giải thích mọi câu"],
+  measure:"Error log đạt ≥10 pattern lỗi lặp lại.",
+  links:["lapshin"]},
+ {id:7,p:"P1",title:"⛳ Chốt nền tảng",
+  study:"Ngày đệm. Làm lại Scrum Open + PO Open tới khi 100% trong dưới 8 phút. Nếu chưa đạt thì cứ ở lại ngày này, đừng vội qua Phase 2.",
+  todo:["Scrum Open → 100%","PO Open → 100%","Cả hai dưới 8 phút"],
+  measure:"CHECKPOINT 1: cả 2 Open = 100%, dưới 8 phút. Đây là cổng vào EBM.",
+  links:["scrumopen","poopen"], gate:true},
+
+ {id:8,p:"P2",title:"EBM là gì + 4 vùng giá trị",
+  study:"Evidence-Based Management: dùng bằng chứng để ra quyết định. Strategic Goal + 4 Key Value Areas (KVA): CV, UV, T2M, A2I. Hôm nay nắm khái quát.",
+  todo:["Đọc 6 trang đầu EBM Guide","Ghi 4 KVA + 1 ví dụ metric mỗi vùng"],
+  measure:"Vẽ được bảng 4 KVA, mỗi vùng kèm 1 metric ví dụ.",
+  links:["ebmguide"]},
+ {id:9,p:"P2",title:"Current Value vs Unrealized Value",
+  study:"CV = giá trị ĐANG có thật (vd: doanh thu/user, satisfaction). UV = giá trị TIỀM NĂNG chưa khai thác (market gap). Phân biệt rõ vì đề hay đánh tráo.",
+  todo:["Đọc sâu CV + UV","List metric mẫu mỗi loại"],
+  measure:"Phân loại đúng CV vs UV cho 3 tình huống tự nghĩ.",
+  links:["ebmguide"]},
+ {id:10,p:"P2",title:"Time-to-Market + Ability to Innovate",
+  study:"T2M = tốc độ giao value ra thị trường (lead time, cycle time, release freq). A2I = năng lực còn lại để tạo cái mới (tech debt, % thời gian phí phạm).",
+  todo:["Đọc sâu T2M + A2I","Map 5 metric vào đúng KVA"],
+  measure:"Map đúng 5/5 metric vào đúng vùng (CV/UV/T2M/A2I).",
+  links:["ebmguide"]},
+ {id:11,p:"P2",title:"Kết hợp metric + PO Stances",
+  study:"Dùng nhiều metric cùng lúc để quyết feature. Leading vs lagging indicator. PO Stances (Visionary, Customer Representative, Decision Maker, Experimenter...) — không có trong Scrum Guide nhưng ra trong PSPO II.",
+  todo:["Đọc cách kết hợp metric ra quyết định","Ghi list PO Stances"],
+  measure:"Giải thích được 1 quyết định feature dựa trên ≥2 KVA.",
+  links:["ebmguide"]},
+ {id:12,p:"P2",title:"⛳ EBM Open",
+  study:"Làm EBM Open trên Scrum.org. Sửa mọi câu sai bằng cách đối chiếu trực tiếp file EBM Guide.",
+  todo:["EBM Open tới ≥90%","Sửa câu sai đối chiếu PDF"],
+  measure:"CHECKPOINT 2: EBM Open ≥ 90%.",
+  links:["ebmopen","ebmguide"], gate:true},
+
+ {id:13,p:"P3",title:"Mock Đề 1",
+  study:"Bắt đầu giả lập phòng thi. Mua/mở 1 bộ Mock PSPO II (Udemy — Volker Donau hoặc Valentin Kraev). Làm Đề 1 đúng điều kiện: 40 câu / 60 phút / không tra.",
+  todo:["Làm Đề 1: 40 câu, 60 phút, bấm giờ thật","Ghi điểm"],
+  measure:"Nộp Đề 1, ghi điểm vào sổ lỗi.",
+  links:[]},
+ {id:14,p:"P3",title:"Mổ xẻ Đề 1",
+  study:"Đọc & dịch phần explanation của TẤT CẢ câu (cả câu đúng), không chỉ câu sai. Hiểu vì sao đáp án kia sai.",
+  todo:["Đọc explanation toàn bộ Đề 1","Error log: pattern sai của Đề 1"],
+  measure:"Error log Đề 1 đầy đủ, không còn câu nào 'chưa hiểu vì sao'.",
+  links:[]},
+ {id:15,p:"P3",title:"Mock Đề 2 — từ chối stakeholder",
+  study:"Làm Đề 2. Soi kỹ nhóm câu: PO từ chối/đàm phán với stakeholder để bảo vệ Product Goal mà vẫn minh bạch. Đây là chủ đề tủ của PSPO II.",
+  todo:["Làm Đề 2: 40 câu / 60 phút","Đánh dấu câu về stakeholder"],
+  measure:"Nộp Đề 2, ghi điểm.",
+  links:[], danger:"⚠️ Vùng ngày 15–20 là chỗ mày hay bỏ ngang. Nếu hôm nay đuối: bấm SKIP, mai đi tiếp. KHÔNG xoá làm lại từ đầu."},
+ {id:16,p:"P3",title:"Mổ xẻ Đề 2 + mẫu câu English",
+  study:"Phân tích explanation Đề 2. Ghi lại các mẫu câu/collocation tiếng Anh hay xuất hiện (vd 'maximize value', 'order the Product Backlog', 'transparency').",
+  todo:["Đọc explanation Đề 2","Ghi ≥10 mẫu câu English"],
+  measure:"Error log Đề 2 đầy đủ + danh sách mẫu câu.",
+  links:[]},
+ {id:17,p:"P3",title:"Mock Đề 3 (full áp lực)",
+  study:"Làm Đề 3 trong đúng 60 phút, không dừng. Mục tiêu là quen áp lực thời gian với câu tình huống dài.",
+  todo:["Làm Đề 3: 40 câu / 60 phút nghiêm túc"],
+  measure:"Nộp Đề 3, ghi điểm. Quy tắc: không câu nào quá 90 giây.",
+  links:[]},
+ {id:18,p:"P3",title:"Mổ xẻ Đề 3 + làm lại Đề 1·2",
+  study:"Đọc explanation Đề 3. Sau đó làm lại Đề 1 & Đề 2 lần 2 — phải thấy điểm nhảy rõ.",
+  todo:["Đọc explanation Đề 3","Làm lại Đề 1 + Đề 2 (lần 2)"],
+  measure:"Đề 1 & Đề 2 lần 2 đều ≥ 85%.",
+  links:[]},
+ {id:19,p:"P3",title:"⛳ Quét đề free",
+  study:"Làm mock free của TheScrumMaster.co.uk + Techagilist PSPO II để gặp thêm dạng câu lạ. Bổ sung error log.",
+  todo:["TheScrumMaster PSPO II mock","Techagilist PSPO II mock"],
+  measure:"CHECKPOINT 3: mock ổn định ≥ 90%. Nếu chưa → ở lại quét tiếp, đừng đặt lịch thi vội.",
+  links:["tsmuk","techagilist"], gate:true},
+
+ {id:20,p:"P4",title:"Giữ phong độ + dọn error log",
+  study:"Làm lại EBM Open + PO Open giữ 100%. Đọc lại toàn bộ sổ lỗi từ ngày 1 → gạch dần những lỗi đã thật sự hiểu.",
+  todo:["EBM Open + PO Open = 100%","Review & gạch error log"],
+  measure:"Số dòng lỗi 'chưa hiểu' giảm xuống gần 0.",
+  links:["ebmopen","poopen"]},
+ {id:21,p:"P4",title:"Mock tổng hợp + mua code thi",
+  study:"Làm đề tổng hợp/đề cuối. Nếu ≥90% ổn định → mua exam code PSPO II ($250) trên Scrum.org, chọn ngày thi.",
+  todo:["Mock cuối ≥ 90%","Mua code thi $250 + đặt lịch"],
+  measure:"Có code thi trong tay + mock cuối ≥ 90%.",
+  links:["register"]},
+ {id:22,p:"P4",title:"Nghỉ não (taper)",
+  study:"KHÔNG học cái mới. Chỉ lướt lại bảng từ bẫy + sổ lỗi. Ngủ đủ. Não cần xả trước phòng thi.",
+  todo:["Lướt bảng từ bẫy","Lướt error log","Ngủ sớm"],
+  measure:"Không nạp content mới. Đầu nhẹ.",
+  links:[]},
+ {id:23,p:"P4",title:"🏆 THI PSPO II",
+  study:"Phòng yên tĩnh, mạng ổn, không bị làm phiền. 40 câu / 60 phút / pass 85%. Quy tắc: câu khó → đoán + mark, đi tiếp, không kẹt 1 chỗ. Tin vào reps đã cày.",
+  todo:["Setup không gian yên tĩnh","Thi chính thức","Cập nhật PSPO II lên LinkedIn"],
+  measure:"🎓 PASS PSPO II. Xong là chuyển portfolio sang góc bài-toán/Agile/số-liệu + viết lại CV EN.",
+  links:["register"], gate:true},
+];
+
+const KEY="pspo2_tracker_v1";
+let state=load();
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||def()}catch(e){return def()}}
+function def(){return{done:{},skipped:{},log:"",mode:"dark",focus:true}}
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+
+function fmtDate(i){const d=new Date(START);d.setDate(d.getDate()+i);
+  return d.toLocaleDateString('vi-VN',{weekday:'short',day:'2-digit',month:'2-digit'})}
+
+function firstActive(){ // first day not done & not skipped
+  for(const d of DAYS){if(!state.done[d.id]&&!state.skipped[d.id])return d.id}
+  return null;}
+
+function phaseCounts(){const c={};for(const k in PHASES)c[k]={done:0,total:0};
+  DAYS.forEach(d=>{c[d.p].total++;if(state.done[d.id])c[d.p].done++});return c;}
+
+function streak(){ // longest consecutive run of done ids ending at latest done
+  let best=0,cur=0;for(const d of DAYS){if(state.done[d.id]){cur++;best=Math.max(best,cur);}else if(!state.skipped[d.id]){cur=0;}}
+  // count consecutive done ending now
+  let tail=0;for(let i=DAYS.length-1;i>=0;i--){const id=DAYS[i].id;
+    if(state.done[id]){tail++;}else if(state.skipped[id]){continue;}else{break;}}
+  return tail;}
+
+function render(){
+  document.body.dataset.mode=state.mode;
+  document.getElementById('modeBtn').textContent=state.mode==='dark'?'☀ Light':'☾ Dark';
+  const doneN=Object.values(state.done).filter(Boolean).length;
+  const skipN=Object.values(state.skipped).filter(Boolean).length;
+  const total=DAYS.length;
+  const pct=Math.round(doneN/total*100);
+  document.getElementById('sDone').textContent=doneN;
+  document.getElementById('sSkip').textContent=skipN;
+  document.getElementById('sStreak').textContent=streak();
+  document.getElementById('sLeft').textContent=total-doneN;
+  document.getElementById('ringPct').textContent=pct+'%';
+  const circ=2*Math.PI*40;
+  document.getElementById('ringFg').style.strokeDashoffset=circ*(1-pct/100);
+
+  // phases
+  const pc=phaseCounts();const ph=document.getElementById('phases');ph.innerHTML='';
+  for(const k in PHASES){const o=PHASES[k],c=pc[k];const w=c.total?c.done/c.total*100:0;
+    ph.insertAdjacentHTML('beforeend',`<div class="pbar">
+      <div class="row"><span class="pname" style="color:${o.color}">${o.name}</span><span class="pcount">${c.done}/${c.total}</span></div>
+      <div class="track"><div class="fill" style="width:${w}%;background:${o.color}"></div></div></div>`);}
+
+  // timeline
+  const active=firstActive();
+  const tl=document.getElementById('timeline');tl.innerHTML='';
+  let lastPhase=null;
+  DAYS.forEach((d,idx)=>{
+    if(d.p!==lastPhase){lastPhase=d.p;
+      tl.insertAdjacentHTML('beforeend',`<div class="secttitle">${PHASES[d.p].name}</div>`);}
+    const isToday=d.id===active;
+    const isDone=!!state.done[d.id];
+    const isSkip=!!state.skipped[d.id];
+    if(state.focus && !isToday){ // collapsed thin row
+      const tag=isDone?'<span class="badge donetag">✓ xong</span>':isSkip?'<span class="badge skiptag">skip</span>':'';
+      tl.insertAdjacentHTML('beforeend',`<div class="day collapsed ${isDone?'done':''} ${isSkip?'skipped':''}" data-id="${d.id}">
+        <div class="dhead" onclick="toggleOpen(${d.id})">
+          <div class="dnum">${d.id}</div>
+          <div class="dmeta"><div class="dtitle">${d.title}</div><div class="ddate">${fmtDate(idx)}</div></div>
+          ${tag}
+        </div></div>`);
+      return;}
+    tl.insertAdjacentHTML('beforeend', dayCard(d,idx,isToday,isDone,isSkip));
+  });
+  // restore log
+  document.getElementById('errlog').value=state.log||'';
+}
+
+function dayCard(d,idx,isToday,isDone,isSkip){
+  const o=PHASES[d.p];
+  const badge=isToday?'<span class="badge todaytag">HÔM NAY</span>':isDone?'<span class="badge donetag">✓ xong</span>':isSkip?'<span class="badge skiptag">đã skip</span>':'';
+  const todoHTML=d.todo.map(t=>`<li>${t}</li>`).join('');
+  const linksHTML=d.links.map(k=>{const x=L[k];return `<a href="${x[1]}" target="_blank" rel="noopener">↗ ${x[0]}</a>`}).join('');
+  const gate=d.gate?`<div class="gate"><div class="em">⛳</div><div><div class="gt">Cổng kiểm tra</div><div class="gs">Chưa đạt mốc đo bên dưới thì <b>ở lại ngày này</b>. Không mở phase sau khi nền chưa chắc.</div></div></div>`:'';
+  const warn=d.danger?`<div class="warn">${d.danger}</div>`:'';
+  let actions;
+  if(isDone) actions=`<button class="act undo-btn" onclick="undo(${d.id})">↩ Bỏ đánh dấu xong</button>`;
+  else if(isSkip) actions=`<button class="act done-btn" onclick="mark(${d.id})">✓ Làm rồi, đánh xong</button><button class="act undo-btn" onclick="undo(${d.id})">↩ Bỏ skip</button>`;
+  else actions=`<button class="act done-btn" onclick="mark(${d.id})">✓ Xong ngày này</button><button class="act skip-btn" onclick="skip(${d.id})">⤳ Skip (không reset)</button>`;
+  return `<div class="day ${isToday?'today':''} ${isDone?'done':''} ${isSkip?'skipped':''}" id="day${d.id}" data-id="${d.id}">
+    <div class="accent" style="background:${o.color}"></div>
+    <div class="dhead" onclick="toggleOpen(${d.id})">
+      <div class="dnum">${d.id}</div>
+      <div class="dmeta">
+        <span class="pill" style="background:${hexA(o.color,.15)};color:${o.color}">${o.name}</span>
+        <div class="dtitle">${d.title}</div>
+        <div class="ddate">${fmtDate(idx)} · ~1h</div>
+      </div>${badge}
+    </div>
+    <div class="dbody">
+      ${gate}
+      <div class="block"><div class="lab"><span class="ic">📖</span>Học gì</div><p>${d.study}</p></div>
+      <div class="block"><div class="lab"><span class="ic">⚙️</span>Làm gì</div><ul>${todoHTML}</ul></div>
+      <div class="block measure"><div class="lab"><span class="ic">🎯</span>Đo bằng output</div><p>${d.measure}</p></div>
+      ${linksHTML?`<div class="links">${linksHTML}</div>`:''}
+      ${warn}
+      <div class="dactions">${actions}</div>
+    </div></div>`;
+}
+function hexA(hex,a){const n=parseInt(hex.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`}
+
+function toggleOpen(id){const el=document.querySelector(`.day[data-id="${id}"]`);
+  if(el.classList.contains('today'))return; el.classList.toggle('open');}
+function mark(id){state.done[id]=true;delete state.skipped[id];save();render();scrollActive();}
+function skip(id){state.skipped[id]=true;delete state.done[id];save();render();scrollActive();}
+function undo(id){delete state.done[id];delete state.skipped[id];save();render();}
+function scrollActive(){const a=firstActive();if(a){const el=document.getElementById('day'+a);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});}}
+
+document.getElementById('jumpToday').onclick=()=>{const a=firstActive();
+  if(a){const el=document.getElementById('day'+a);el&&el.scrollIntoView({behavior:'smooth',block:'center'});}
+  else alert('Hết ngày rồi — nghĩa là mày xong hết. Đi thi đi 🎓');};
+document.getElementById('focusToggle').onclick=function(){state.focus=!state.focus;save();
+  this.textContent='👁 Focus mode: '+(state.focus?'BẬT':'TẮT');render();};
+document.getElementById('focusToggle').textContent='👁 Focus mode: '+(state.focus?'BẬT':'TẮT');
+document.getElementById('modeBtn').onclick=()=>{state.mode=state.mode==='dark'?'light':'dark';save();render();};
+
+let saveT;const ta=document.getElementById('errlog');
+ta.addEventListener('input',()=>{state.log=ta.value;clearTimeout(saveT);
+  saveT=setTimeout(()=>{save();const n=document.getElementById('savedNote');n.textContent='đã lưu ✓';n.style.opacity=1;
+    setTimeout(()=>n.style.opacity=0,1200);},400);});
+
+document.getElementById('resetBtn').onclick=()=>{
+  if(confirm('Xoá hết tiến độ + sổ lỗi? Không hoàn tác được.')){localStorage.removeItem(KEY);state=def();save();render();}};
+
+render();
+</script>
+</body>
+</html>
